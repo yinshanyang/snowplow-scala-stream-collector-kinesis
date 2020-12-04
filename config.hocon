@@ -93,11 +93,7 @@ collector {
     # Examples:
     # domain.com will match domain.com, www.domain.com and secure.client.domain.com
     # client.domain.com will match secure.client.domain.com but not domain.com or www.domain.com
-    domains = [
-        "{{cookieDomain1}}" # e.g. "domain.com" -> any origin domain ending with this will be matched and domain.com will be returned
-        "{{cookieDomain2}}" # e.g. "secure.anotherdomain.com" -> any origin domain ending with this will be matched and secure.anotherdomain.com will be returned
-        # ... more domains
-    ]
+    domains = []
     domains += ${?COLLECTOR_COOKIE_DOMAIN_1}
     domains += ${?COLLECTOR_COOKIE_DOMAIN_2}
     # ... more domains
@@ -206,11 +202,9 @@ collector {
 
   streams {
     # Events which have successfully been collected will be stored in the good stream/topic
-    good = "snowplow-raw-good"
     good = ${?COLLECTOR_STREAMS_GOOD}
 
     # Events that are too big (w.r.t Kinesis 1MB limit) will be stored in the bad stream/topic
-    bad = "snowplow-raw-bad"
     bad = ${?COLLECTOR_STREAMS_BAD}
 
     # Whether to use the incoming event's ip as the partition key for the good stream/topic
@@ -243,15 +237,17 @@ collector {
       # If both are set to 'iam', use AWS IAM Roles to provision credentials.
       # If both are set to 'env', use environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
       aws {
-        accessKey = iam
+        accessKey = default
         accessKey = ${?COLLECTOR_STREAMS_SINK_AWS_ACCESS_KEY}
-        secretKey = iam
+        secretKey = default
         secretKey = ${?COLLECTOR_STREAMS_SINK_AWS_SECRET_KEY}
       }
 
       # Minimum and maximum backoff periods, in milliseconds
       backoffPolicy {
+        minBackoff = 10
         minBackoff = ${?COLLECTOR_STREAMS_SINK_MIN_BACKOFF}
+        maxBackoff = 300000
         maxBackoff = ${?COLLECTOR_STREAMS_SINK_MAX_BACKOFF}
       }
     }
@@ -263,12 +259,14 @@ collector {
     # - the combined size of the stored records reaches byte-limit or
     # - the time in milliseconds since the buffer was last emptied reaches time-limit
     buffer {
+      byteLimit = 16384
       byteLimit = ${?COLLECTOR_STREAMS_BUFFER_BYTE_LIMIT}
+      recordLimit = 1000
       recordLimit = ${?COLLECTOR_STREAMS_BUFFER_RECORD_LIMIT}
+      timeLimit = 10000
       timeLimit = ${?COLLECTOR_STREAMS_BUFFER_TIME_LIMIT}
     }
   }
-
 }
 
 # Akka has a variety of possible configuration options defined at
@@ -299,22 +297,4 @@ akka {
       uri-parsing-mode = ${?AKKA_HTTP_SERVER_PARSING_URI_PARSING_MODE}
     }
   }
-
-  # By default setting `collector.ssl` relies on JSSE (Java Secure Socket
-  # Extension) to enable secure communication.
-  # To override the default settings set the following section as per
-  # https://lightbend.github.io/ssl-config/ExampleSSLConfig.html
-  # ssl-config {
-  #   debug = {
-  #     ssl = true
-  #   }
-  #   keyManager = {
-  #     stores = [
-  #       {type = "PKCS12", classpath = false, path = "/etc/ssl/mycert.p12", password = "mypassword" }
-  #     ]
-  #   }
-  #   loose {
-  #     disableHostnameVerification = false
-  #   }
-  # }
 }
